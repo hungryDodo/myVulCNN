@@ -1,0 +1,6 @@
+python myImageGeneration.py -i ./data/sard/pdgs/Vul -o ./data/myTest/outputs/Vul -m ./data/data_model.bin
+python myImageGeneration.py -i ./data/sard/pdgs/No-Vul -o ./data/myTest/outputs/No-Vul  -m ./data/data_model.bin
+
+python generate_train_test_data.py -i ./data/myTest/outputs -o ./data/myTest/pkl -n 5
+
+python VulCNN.py -i ./data/myTest/pkl
