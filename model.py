@@ -17,7 +17,7 @@ from transformers import AdamW, get_linear_schedule_with_warmup  # 从 transform
 from sklearn.metrics import precision_recall_fscore_support  # 导入 sklearn 的精度、召回率、F1 分数函数。
 from sklearn.metrics import multilabel_confusion_matrix  # 导入 sklearn 的多标签混淆矩阵函数。
 from openpyxl import load_workbook
-
+from utils import Res18Test, TextCNNx2, MHATest, FcaTest, MHAx2Test
 
 
 
@@ -234,7 +234,8 @@ class TextCNN(nn.Module):  # 定义一个继承自 nn.Module 的文本卷积神�
 class CNN_Classifier():  # 定义 CNN 分类器类
     def __init__(self, max_len=100, n_classes=2, epochs=100, batch_size=32, learning_rate=0.001, \
                  result_save_path="/root/data/qm_data/vulcnn/data/results", item_num=0, hidden_size=128):
-        self.model = TextCNN(hidden_size)  # 初始化 TextCNN 模型
+        # self.model = TextCNN(hidden_size)  # 初始化 TextCNN 模型
+        self.model = MHATest(hidden_size)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 设置设备为 GPU 或 CPU
         self.max_len = max_len  # 设置最大序列长度
         self.epochs = epochs  # 设置训练的轮数
