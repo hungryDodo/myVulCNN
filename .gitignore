@@ -1,3 +1,6 @@
 /data/MyTest/
 /data/sard/
 /joern-cli
+
+.vscode/
+__pycache__/
