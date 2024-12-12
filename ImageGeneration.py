@@ -3,19 +3,20 @@ import glob
 import pickle
 import argparse
 import sent2vec
+import datetime
 import numpy as np
-from tqdm import tqdm
 import networkx as nx
+from functools import partial
+from multiprocessing import Pool
 from prettytable import PrettyTable
-from multiprocessing import Pool, Value, Lock
 
 
 # 保证 centrality 输入参数有效
 def validate_centrality(value):
-    valid_characters = set('BCDEKP')
+    valid_characters = set('BCDKP')
     if not set(value).issubset(valid_characters) or len(value) != len(set(value)):
         raise argparse.ArgumentTypeError(
-            f"Invalid centrality type '{value}'. Must be a subset of non-repeating letters from 'BCDEKP'."
+            f"Invalid centrality type '{value}'. Must be a subset of non-repeating letters from 'BCDKP'."
         )
     return value
 
@@ -27,7 +28,7 @@ def parse_options():
     parser.add_argument('-m', '--model', help='The path of model.', required=True)
     # 增加一个控制 centrality 种类的选项, 默认使用5种 centrality
     parser.add_argument(
-        '-c', '--centrality', help='The type of centrality to use.', default='BCDEP', type=validate_centrality
+        '-c', '--centrality', help='The type of centrality to use.', default='BCDP', type=validate_centrality
     )
     args = parser.parse_args()
     return args
@@ -80,7 +81,6 @@ def image_generation(dot, centrality_types):
             'B': [],  # Betweenness centrality
             'C': [],  # Closeness centrality
             'D': [],  # Degree centrality
-            'E': [],  # Eigenvector centrality
             'K': [],  # Katz centrality
             'P': []   # PageRank centrality
         }
@@ -93,10 +93,11 @@ def image_generation(dot, centrality_types):
             centrality_dicts['C'] = nx.closeness_centrality(pdg)
         if 'D' in centrality_types:
             centrality_dicts['D'] = nx.degree_centrality(pdg)
-        if 'E' in centrality_types:
-            centrality_dicts['E'] = nx.eigenvector_centrality(pdg)
         if 'K' in centrality_types:
-            centrality_dicts['K'] = nx.katz_centrality(pdg)
+            G_k = nx.DiGraph()
+            G_k.add_nodes_from(pdg.nodes())
+            G_k.add_edges_from(pdg.edges())
+            centrality_dicts['K'] = nx.katz_centrality(G_k)
         if 'P' in centrality_types:
             centrality_dicts['P'] = nx.pagerank(pdg)
 
@@ -117,17 +118,14 @@ def image_generation(dot, centrality_types):
         return
 
 
-def write_to_pkl(dot_file, output_dir, existing_files, centrality, progress_counter, lock):
-    with lock:
-        progress_counter.value += 1
-
+def write_to_pkl(dot_file, output_dir, existing_files, centrality):
     # 检查当前文件是否已经处理过了
     file_basename = os.path.splitext(os.path.basename(dot_file))[0]
     if file_basename in existing_files:
         print(f"Skipping {dot_file}, already processed.")
         return
 
-    channels = image_generation(dot_file)
+    channels = image_generation(dot_file, centrality)
     if channels is None:
         return None
 
@@ -144,8 +142,8 @@ def validate_and_normalize_paths(input_path, output_path, model_path):
     if input_dir and not os.path.isdir(input_dir):
         raise FileNotFoundError(f"Input directory does not exist: {input_dir}")
 
-    if not os.path.isdir(os.path.dirname(output_dir)):
-        os.makedirs(os.path.dirname(output_dir), exist_ok=True)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
 
     if not os.path.isfile(model_file):
         raise FileNotFoundError(f"Model file does not exist: {model_file}")
@@ -167,7 +165,6 @@ def main():
         'B': 'Betweenness Centrality',
         'C': 'Closeness Centrality',
         'D': 'Degree Centrality',
-        'E': 'Eigenvector Centrality',
         'K': 'Katz Centrality',
         'P': 'PageRank Centrality'
     }
@@ -189,25 +186,16 @@ def main():
     if not dot_files:
         print(f"No .dot files found in the directory: {input_dir}")
     pkl_filenames = extract_pkl_filenames(output_dir)
-
-    progress_counter = Value('i', 0)
-    lock = Lock()
-
-    with tqdm(total=len(dot_files), desc="Processing files") as pbar:
-        def update_progress(dot_file):
-            with lock:
-                pbar.set_postfix(current_file=os.path.basename(dot_file))
-                pbar.update(1)
         
-        pool = Pool(os.cpu_count() or 1)
-        for dot_file in dot_files:
-            pool.apply_async(
-                write_to_pkl,
-                args=(dot_file, output_dir, pkl_filenames, args.centrality, progress_counter, lock),
-                callback=lambda _: update_progress(dot_file)
-            )
-        pool.close()
-        pool.join()
+    pool = Pool(os.cpu_count() or 1)
+    pool.map(partial(
+        write_to_pkl, 
+        output_dir=output_dir, 
+        existing_files=pkl_filenames, 
+        centrality=args.centrality
+    ), dot_files)
+    pool.close()
+    pool.join()
 
     sent2vec_model.release_shared_mem(trained_model_path)
 
