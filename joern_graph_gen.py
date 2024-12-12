@@ -17,6 +17,7 @@ def get_all_file(path):
             file_list.append(file)
     return file_list
 
+
 def parse_options():
     parser = argparse.ArgumentParser(description='Extracting Cpgs.')
     parser.add_argument('-i', '--input', help='The dir path of input', type=str, default='./novul_bin')
@@ -46,6 +47,7 @@ def parse_options():
 #     with open(record_txt, 'a+') as f:
 #         f.writelines(name+'\n')
 
+
 def joern_parse(file, outdir, inputdir):
     record_txt = os.path.join(outdir, "parse_res.txt")
     if not os.path.exists(record_txt):
@@ -73,10 +75,8 @@ def joern_parse(file, outdir, inputdir):
 
     os.system(cmd)
 
-
     with open(record_txt, 'a+') as f:
         f.writelines(name + '\n')
-
 
 
 def joern_export(bin, outdir, repr):
@@ -100,8 +100,32 @@ def joern_export(bin, outdir, repr):
         try:
             pdg_list = os.listdir(out)
             for pdg in pdg_list:
-                if pdg.startswith("0-pdg"):
+                if pdg.startswith("1-pdg"):
                     file_path = os.path.join(out, pdg)
+                    os.system("mv "+file_path+' '+out+'.dot')
+                    os.system("rm -rf "+out)
+                    break
+        except:
+            pass
+    if repr == 'cfg':
+        os.system('sh joern-export $bin'+ " --repr " + "cfg" + ' --out $out') 
+        try:
+            cfg_list = os.listdir(out)
+            for cfg in cfg_list:
+                if cfg.startswith("1-cfg"):
+                    file_path = os.path.join(out, cfg)
+                    os.system("mv "+file_path+' '+out+'.dot')
+                    os.system("rm -rf "+out)
+                    break
+        except:
+            pass
+    if repr == 'ast':
+        os.system('sh joern-export $bin'+ " --repr " + "ast" + ' --out $out') 
+        try:
+            ast_list = os.listdir(out)
+            for ast in ast_list:
+                if ast.startswith("1-ast"):
+                    file_path = os.path.join(out, ast)
                     os.system("mv "+file_path+' '+out+'.dot')
                     os.system("rm -rf "+out)
                     break
@@ -125,7 +149,7 @@ def joern_export(bin, outdir, repr):
         f.writelines(name+'\n')
 
 def main():
-    joern_path = './joern-cli'
+    joern_path = '../joern-cli'
     os.chdir(joern_path)
     args = parse_options()
     type = args.type
@@ -144,9 +168,9 @@ def main():
     else:
         output_path += '/'
 
-    pool_num = 16
+    # pool_num = 16
         
-    pool = Pool(pool_num)
+    pool = Pool(os.cpu_count() or 1)
 
     # if type == 'parse':
     #     # files = get_all_file(input_path)
@@ -170,10 +194,7 @@ def main():
 
     elif type == 'export':
         bins = glob.glob(input_path + '*.bin')
-        if repr == 'pdg':
-            pool.map(partial(joern_export, outdir=output_path, repr=repr), bins)
-        else:
-            pool.map(partial(joern_export, outdir=output_path, repr=repr), bins)
+        pool.map(partial(joern_export, outdir=output_path, repr=repr), bins)
 
     else:
         print('Type error!')    
