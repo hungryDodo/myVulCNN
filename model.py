@@ -9,7 +9,7 @@ from torch import nn  # 从 PyTorch 导入神经网络模块。
 from tqdm import tqdm  # 导入 tqdm 库，用于显示进度条。
 import torch.nn.functional as F  # 导入 PyTorch 的功能模块，用于神经网络的各种功能操作。
 from prettytable import PrettyTable  # 导入 PrettyTable 库，用于打印格式化表格。
-from torch.cuda.amp import autocast  # 导入 autocast，用于自动混合精度训练。
+from torch.amp import autocast  # 导入 autocast，用于自动混合精度训练。
 from torch.utils.data import Dataset  # 导入 PyTorch 的 Dataset 类，用于创建自定义数据集。
 from torch.utils.data import DataLoader  # 导入 PyTorch 的 DataLoader 类，用于加载数据。
 from sklearn.metrics import confusion_matrix  # 导入 sklearn 的混淆矩阵函数，用于计算分类模型的性能。
@@ -17,9 +17,7 @@ from transformers import AdamW, get_linear_schedule_with_warmup  # 从 transform
 from sklearn.metrics import precision_recall_fscore_support  # 导入 sklearn 的精度、召回率、F1 分数函数。
 from sklearn.metrics import multilabel_confusion_matrix  # 导入 sklearn 的多标签混淆矩阵函数。
 from openpyxl import load_workbook
-from utils import Res18Test, TextCNNx2, MHATest, FcaTest, MHAx2Test
-
-
+from utils import Res18_Test, TextCNNx2, MHA_Test, MHA_SE_Test, Fca_Test, MHAx2_Test
 
 
 #将数据保存到指定的文件中，使用 pickle 库进行序列化
@@ -235,7 +233,7 @@ class CNN_Classifier():  # 定义 CNN 分类器类
     def __init__(self, max_len=100, n_classes=2, epochs=100, batch_size=32, learning_rate=0.001, \
                  result_save_path="/root/data/qm_data/vulcnn/data/results", item_num=0, hidden_size=128):
         # self.model = TextCNN(hidden_size)  # 初始化 TextCNN 模型
-        self.model = MHATest(hidden_size)
+        self.model = MHA_Test(hidden_size)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 设置设备为 GPU 或 CPU
         self.max_len = max_len  # 设置最大序列长度
         self.epochs = epochs  # 设置训练的轮数
@@ -270,13 +268,13 @@ class CNN_Classifier():  # 定义 CNN 分类器类
         losses = []  # 初始化损失列表
         labels = []  # 初始化标签列表
         predictions = []  # 初始化预测列表
-        scaler = torch.cuda.amp.GradScaler()  # 初始化自动混合精度缩放器
+        scaler = torch.amp.GradScaler()  # 初始化自动混合精度缩放器
         progress_bar = tqdm(enumerate(self.train_loader), total=len(self.train_loader))  # 创建进度条
         for i, data in progress_bar:  # 遍历训练数据加载器
             self.optimizer.zero_grad()  # 清除优化器的梯度
             vectors = data["vector"].to(self.device)  # 获取输入数据并移至设备
             targets = data["targets"].to(self.device)  # 获取目标标签并移至设备
-            with autocast():  # 使用自动混合精度进行训练
+            with autocast("cuda"):  # 使用自动混合精度进行训练
                 outputs, _ = self.model(vectors)  # 获取模型输出
                 loss = self.loss_fn(outputs, targets)  # 计算损失
             scaler.scale(loss).backward()  # 反向传播
