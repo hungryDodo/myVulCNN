@@ -173,7 +173,7 @@ def main():
     }
     table = PrettyTable()
     table.field_names = ["Short Name", "Full Name"]
-    for ctype in centrality_types:
+    for ctype in args.centrality:
         table.add_row([ctype, centrality_names[ctype]])
     print("本次使用的中心性列表：")
     print(table)
