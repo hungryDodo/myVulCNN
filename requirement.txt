@@ -1,0 +1,10 @@
+Cython
+pydot
+lap
+nvitop
+prettytable
+pandas
+scikit-learn
+scipy
+transformers
+openpyxl
