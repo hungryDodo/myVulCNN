@@ -17,7 +17,7 @@ from transformers import AdamW, get_linear_schedule_with_warmup  # 从 transform
 from sklearn.metrics import precision_recall_fscore_support  # 导入 sklearn 的精度、召回率、F1 分数函数。
 from sklearn.metrics import multilabel_confusion_matrix  # 导入 sklearn 的多标签混淆矩阵函数。
 from openpyxl import load_workbook
-from utils import Res18_Test, TextCNNx2, MHA_Test, MHA_SE_Test, Fca_Test, MHAx2_Test
+from utils import Res18_Test, TextCNNx2, MHA_Test, MHA_SE_Test, SE_Test, Fca_Test, MHAx2_Test, MHA_ECA_Test, ECA_Test
 
 
 #将数据保存到指定的文件中，使用 pickle 库进行序列化
@@ -192,8 +192,8 @@ class TraditionalDataset(Dataset):
     def __getitem__(self, idx):
         feature = self.texts[idx]  # 获取指定索引的文本特征。
         target = self.targets[idx]  # 获取指定索引的目标标签。
-        vectors = numpy.zeros(shape=(3, self.max_len, self.hidden_size))  # 初始化特征向量矩阵。
-        for j in range(3):  # 遍历每个特征。
+        vectors = numpy.zeros(shape=(4, self.max_len, self.hidden_size))  # 初始化特征向量矩阵。
+        for j in range(4):  # 遍历每个特征。
             for i in range(min(len(feature[0]), self.max_len)):  # 遍历每个序列。
                 vectors[j][i] = feature[j][i]  # 将特征赋值给特征向量矩阵。
         return {
@@ -209,7 +209,7 @@ class TextCNN(nn.Module):  # 定义一个继承自 nn.Module 的文本卷积神�
         self.num_filters = 32  # 定义每个卷积核大小的输出通道数
         classifier_dropout = 0.1  # 定义 dropout 的概率
         self.convs = nn.ModuleList(
-            [nn.Conv2d(3, self.num_filters, (k, hidden_size)) for k in self.filter_sizes]
+            [nn.Conv2d(4, self.num_filters, (k, hidden_size)) for k in self.filter_sizes]
         )  # 初始化多个卷积层，每个卷积层有不同的卷积核大小
         self.dropout = nn.Dropout(classifier_dropout)  # 定义 dropout 层，用于正则化
         num_classes = 2  # 定义分类任务的类别数
@@ -231,9 +231,9 @@ class TextCNN(nn.Module):  # 定义一个继承自 nn.Module 的文本卷积神�
 
 class CNN_Classifier():  # 定义 CNN 分类器类
     def __init__(self, max_len=100, n_classes=2, epochs=100, batch_size=32, learning_rate=0.001, \
-                 result_save_path="/root/data/qm_data/vulcnn/data/results", item_num=0, hidden_size=128):
+                 result_save_path="/root/data/qm_data/vulcnn/data/results", item_num=0, hidden_size=768):
         # self.model = TextCNN(hidden_size)  # 初始化 TextCNN 模型
-        self.model = MHA_Test(hidden_size)
+        self.model = SE_Test(hidden_size)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 设置设备为 GPU 或 CPU
         self.max_len = max_len  # 设置最大序列长度
         self.epochs = epochs  # 设置训练的轮数
